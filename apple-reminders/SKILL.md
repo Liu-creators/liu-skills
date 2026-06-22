@@ -38,17 +38,22 @@ bash ~/.cursor/skills/apple-reminders/scripts/create-reminder.sh \
   --name "标题" \
   [--list 列表名] \
   [--notes "备注"] \
-  [--due-date YYYY-MM-DD]
+  [--due-date YYYY-MM-DD] \
+  [--urgent] \
+  [--flag]
 ```
 
 - `--name` is required.
 - Without `--list`, uses the first list in Reminders.
+- `--urgent` and `--flag` are off by default; only pass them when explicitly requested.
 
 ```bash
 # Examples
 bash ~/.cursor/skills/apple-reminders/scripts/create-reminder.sh --name "买牛奶" --list 提醒
 bash ~/.cursor/skills/apple-reminders/scripts/create-reminder.sh \
   --name "周报" --list 任务 --due-date 2026-06-25 --notes "周五前提交"
+bash ~/.cursor/skills/apple-reminders/scripts/create-reminder.sh \
+  --name "Python 工程化" --urgent --flag
 ```
 
 ## Update
@@ -61,12 +66,16 @@ bash ~/.cursor/skills/apple-reminders/scripts/update-reminder.sh \
   [--notes "新备注" | --clear-notes] \
   [--due-date YYYY-MM-DD | --clear-due-date] \
   [--complete | --uncomplete] \
+  [--urgent | --not-urgent] \
+  [--flag | --unflag] \
   [--move-to 目标列表]
 ```
 
 - `--search` is required (case-insensitive substring match).
 - At least one modification flag is required.
 - Only updates **one** reminder; errors if zero or multiple matches.
+- `--urgent` sets Reminders priority to high; `--not-urgent` clears priority.
+- `--flag` adds the Reminders flag; `--unflag` removes it.
 
 ```bash
 # Examples
@@ -75,6 +84,8 @@ bash ~/.cursor/skills/apple-reminders/scripts/update-reminder.sh \
   --list 提醒 --search "Agent Skills" --new-name "Agent Skills 进阶"
 bash ~/.cursor/skills/apple-reminders/scripts/update-reminder.sh \
   --search "周报" --due-date 2026-06-30 --notes "延期一周"
+bash ~/.cursor/skills/apple-reminders/scripts/update-reminder.sh \
+  --search "Python 工程化" --urgent --flag
 ```
 
 ## Workflow by intent
@@ -86,6 +97,8 @@ bash ~/.cursor/skills/apple-reminders/scripts/update-reminder.sh \
 | 改标题 / 改备注 / 改日期 | `update-reminder.sh --search ...` + flags |
 | 完成 / 勾选 | `update-reminder.sh --search ... --complete` |
 | 取消完成 | `update-reminder.sh --search ... --uncomplete` |
+| 标记紧急 / 取消紧急 | `update-reminder.sh --search ... --urgent` / `--not-urgent` |
+| 添加旗标 / 取消旗标 | `update-reminder.sh --search ... --flag` / `--unflag` |
 | 移到另一个列表 | `update-reminder.sh --search ... --move-to ...` |
 
 ## Response format

@@ -16,6 +16,10 @@ SET_DUE=0
 CLEAR_DUE=0
 MARK_COMPLETE=0
 MARK_INCOMPLETE=0
+MARK_URGENT=0
+MARK_NOT_URGENT=0
+MARK_FLAGGED=0
+MARK_UNFLAGGED=0
 MOVE_TO=""
 
 usage() {
@@ -34,6 +38,10 @@ Options:
   --clear-due-date   Remove due date
   --complete         Mark as completed
   --uncomplete       Mark as incomplete
+  --urgent           Mark as urgent / high priority
+  --not-urgent       Clear urgent priority
+  --flag             Add flag
+  --unflag           Remove flag
   --move-to LIST     Move reminder to another list
   -h, --help         Show this help
 
@@ -44,6 +52,7 @@ Examples:
   update-reminder.sh --search "Agent Skills" --new-name "Agent Skills 进阶"
   update-reminder.sh --list 任务 --search "周报" --due-date 2026-06-30
   update-reminder.sh --search "旧任务" --move-to 提醒 --notes "已迁移"
+  update-reminder.sh --search "Python 工程化" --urgent --flag
 EOF
 }
 
@@ -58,6 +67,10 @@ while [[ $# -gt 0 ]]; do
     --clear-due-date) CLEAR_DUE=1; shift ;;
     --complete) MARK_COMPLETE=1; shift ;;
     --uncomplete) MARK_INCOMPLETE=1; shift ;;
+    --urgent) MARK_URGENT=1; shift ;;
+    --not-urgent) MARK_NOT_URGENT=1; shift ;;
+    --flag) MARK_FLAGGED=1; shift ;;
+    --unflag) MARK_UNFLAGGED=1; shift ;;
     --move-to) MOVE_TO="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
@@ -80,9 +93,21 @@ if [[ $MARK_COMPLETE -eq 1 && $MARK_INCOMPLETE -eq 1 ]]; then
   exit 1
 fi
 
+if [[ $MARK_URGENT -eq 1 && $MARK_NOT_URGENT -eq 1 ]]; then
+  echo "Error: --urgent and --not-urgent cannot be used together." >&2
+  exit 1
+fi
+
+if [[ $MARK_FLAGGED -eq 1 && $MARK_UNFLAGGED -eq 1 ]]; then
+  echo "Error: --flag and --unflag cannot be used together." >&2
+  exit 1
+fi
+
 if [[ -z "$NEW_NAME" && $SET_NOTES -eq 0 && $SET_DUE -eq 0 && $CLEAR_DUE -eq 0 \
-  && $MARK_COMPLETE -eq 0 && $MARK_INCOMPLETE -eq 0 && -z "$MOVE_TO" ]]; then
-  echo "Error: specify at least one modification (--new-name, --notes, --due-date, --clear-due-date, --complete, --uncomplete, --move-to)." >&2
+  && $MARK_COMPLETE -eq 0 && $MARK_INCOMPLETE -eq 0 && $MARK_URGENT -eq 0 \
+  && $MARK_NOT_URGENT -eq 0 && $MARK_FLAGGED -eq 0 && $MARK_UNFLAGGED -eq 0 \
+  && -z "$MOVE_TO" ]]; then
+  echo "Error: specify at least one modification (--new-name, --notes, --due-date, --clear-due-date, --complete, --uncomplete, --urgent, --not-urgent, --flag, --unflag, --move-to)." >&2
   exit 1
 fi
 
@@ -164,7 +189,7 @@ export_b64 TARGET_NAME "$TARGET_NAME"
 export_b64 REMINDER_NEW_NAME "$NEW_NAME"
 export_b64 REMINDER_NOTES "$NOTES"
 export_b64 REMINDER_MOVE_TO "$MOVE_TO"
-export SET_NOTES SET_DUE CLEAR_DUE MARK_COMPLETE MARK_INCOMPLETE
+export SET_NOTES SET_DUE CLEAR_DUE MARK_COMPLETE MARK_INCOMPLETE MARK_URGENT MARK_NOT_URGENT MARK_FLAGGED MARK_UNFLAGGED
 
 osascript <<APPLESCRIPT
 $(applescript_decode_b64)
@@ -179,6 +204,10 @@ set setDue to (system attribute "SET_DUE") is "1"
 set clearDue to (system attribute "CLEAR_DUE") is "1"
 set markComplete to (system attribute "MARK_COMPLETE") is "1"
 set markIncomplete to (system attribute "MARK_INCOMPLETE") is "1"
+set markUrgent to (system attribute "MARK_URGENT") is "1"
+set markNotUrgent to (system attribute "MARK_NOT_URGENT") is "1"
+set markFlagged to (system attribute "MARK_FLAGGED") is "1"
+set markUnflagged to (system attribute "MARK_UNFLAGGED") is "1"
 set oldName to targetReminderName
 set oldList to targetListName
 
@@ -247,6 +276,26 @@ tell application "Reminders"
   if markIncomplete then
     set completed of r to false
     set end of changes to "状态: 未完成"
+  end if
+
+  if markUrgent then
+    set priority of r to 1
+    set end of changes to "紧急: 是"
+  end if
+
+  if markNotUrgent then
+    set priority of r to 0
+    set end of changes to "紧急: 否"
+  end if
+
+  if markFlagged then
+    set flagged of r to true
+    set end of changes to "旗标: 是"
+  end if
+
+  if markUnflagged then
+    set flagged of r to false
+    set end of changes to "旗标: 否"
   end if
 
   if moveToList is not "" then

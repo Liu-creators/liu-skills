@@ -11,6 +11,8 @@ LIST_NAME=""
 NOTES=""
 DUE_DATE=""
 SET_DUE=0
+SET_URGENT=0
+SET_FLAGGED=0
 
 usage() {
   cat <<'EOF'
@@ -23,11 +25,14 @@ Options:
   --list NAME        Target list (default: first list in Reminders)
   --notes TEXT       Notes / body text
   --due-date DATE    Due date as YYYY-MM-DD
+  --urgent           Mark as urgent / high priority
+  --flag             Add flag
   -h, --help         Show this help
 
 Examples:
   create-reminder.sh --name "买牛奶" --list 提醒
   create-reminder.sh --name "周报" --list 任务 --due-date 2026-06-25 --notes "周五前提交"
+  create-reminder.sh --name "Python 工程化" --urgent --flag
 EOF
 }
 
@@ -37,6 +42,8 @@ while [[ $# -gt 0 ]]; do
     --list) LIST_NAME="${2:-}"; shift 2 ;;
     --notes) NOTES="${2:-}"; shift 2 ;;
     --due-date) DUE_DATE="${2:-}"; SET_DUE=1; shift 2 ;;
+    --urgent) SET_URGENT=1; shift ;;
+    --flag) SET_FLAGGED=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
@@ -58,7 +65,7 @@ check_macos
 export_b64 REMINDER_NAME "$NAME"
 export_b64 REMINDER_LIST "$LIST_NAME"
 export_b64 REMINDER_NOTES "$NOTES"
-export SET_DUE
+export SET_DUE SET_URGENT SET_FLAGGED
 
 osascript <<APPLESCRIPT
 $(applescript_decode_b64)
@@ -67,6 +74,8 @@ set reminderName to my decodeEnv("REMINDER_NAME_B64")
 set listName to my decodeEnv("REMINDER_LIST_B64")
 set reminderNotes to my decodeEnv("REMINDER_NOTES_B64")
 set setDue to (system attribute "SET_DUE") is "1"
+set setUrgent to (system attribute "SET_URGENT") is "1"
+set setFlagged to (system attribute "SET_FLAGGED") is "1"
 
 tell application "Reminders"
   if listName is "" then
@@ -100,11 +109,16 @@ tell application "Reminders"
     set due date of newReminder to dueValue
   end if
 
+  if setUrgent then set priority of newReminder to 1
+  if setFlagged then set flagged of newReminder to true
+
   set output to "已创建提醒: " & reminderName & linefeed & "列表: " & (name of targetList)
   if setDue then
     set output to output & linefeed & "截止: " & (system attribute "DUE_YEAR") & "-" & (system attribute "DUE_MONTH") & "-" & (system attribute "DUE_DAY")
   end if
   if reminderNotes is not "" then set output to output & linefeed & "备注: " & reminderNotes
+  if setUrgent then set output to output & linefeed & "紧急: 是"
+  if setFlagged then set output to output & linefeed & "旗标: 是"
   return output
 end tell
 APPLESCRIPT
